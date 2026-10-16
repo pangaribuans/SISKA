@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siska Guru - Pantau Nilai & Peringatan Dini Siswa</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Navbar yang Ramah Guru -->
+    <header class="bg-indigo-600 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-700 p-2.5 rounded-xl shadow-inner">
+                    <i class="fa-solid fa-graduation-cap text-2xl text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Siska Guru</h1>
+                    <p class="text-xs text-indigo-200">Sistem Pemantauan Nilai & Peringatan Dini Siswa</p>
+                </div>
+            </div>
+            
+            <!-- Quick Setting & Actions -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="bg-indigo-700/80 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs border border-indigo-500">
+                    <span class="text-indigo-200">KKM Sekolah:</span>
+                    <input type="number" id="kkm-input" value="75" min="50" max="100" onchange="updateKKM(this.value)" class="w-12 bg-indigo-800 text-white text-center font-bold rounded px-1 py-0.5 outline-none border border-indigo-400">
+                </div>
+                <button onclick="openAddModal()" class="bg-white text-indigo-700 hover:bg-indigo-50 font-semibold px-4 py-2 rounded-xl text-xs shadow-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Tambah Data Siswa
+                </button>
+                <button onclick="window.print()" class="bg-indigo-700 hover:bg-indigo-800 text-indigo-100 font-semibold px-3.5 py-2 rounded-xl text-xs transition flex items-center gap-1.5 border border-indigo-500">
+                    <i class="fa-solid fa-print"></i> Cetak Laporan
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="printable-area" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full space-y-8">
+
+        <!-- Print Header Title (Only visible when printing) -->
+        <div class="hidden print:block mb-6 text-center">
+            <h2 class="text-2xl font-bold text-slate-900">Laporan Peringatan Dini & Rekapitulasi Nilai Siswa</h2>
+            <p class="text-sm text-slate-600">Dicetak otomatis oleh Siska Guru - Standar KKM: <span id="print-kkm-label">75</span></p>
+        </div>
+
+        <!-- Toast Notification Container -->
+        <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+        <!-- Kartu Ringkasan (Dashboard Guru-Friendly) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 no-print">
+            <!-- Total Siswa -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Siswa</p>
+                    <h3 id="stat-total" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3>
+                    <p class="text-xs text-slate-500 mt-1">Di kelas ini</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+
+            <!-- Siswa Aman -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Siswa Aman</p>
+                    <h3 id="stat-aman" class="text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
+                    <p class="text-xs text-emerald-600/80 mt-1">Nilai di atas KKM</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+
+            <!-- Perlu Perhatian -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-amber-500">Perlu Perhatian</p>
+                    <h3 id="stat-perhatian" class="text-3xl font-extrabold text-amber-600 mt-1">0</h3>
+                    <p class="text-xs text-amber-600 mt-1">Mendekati KKM</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+
+            <!-- Butuh Remedial -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-rose-500">Butuh Remedial</p>
+                    <h3 id="stat-remedial" class="text-3xl font-extrabold text-rose-600 mt-1">0</h3>
+                    <p class="text-xs text-rose-500 mt-1">Di bawah KKM</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-user-clock"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tabel Utama Siswa -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-address-book text-indigo-600"></i> Daftar Pantauan & Prediksi Nilai Siswa
+                    </h2>
+                    <p class="text-xs text-slate-500">Klik ikon stetoskop pada kolom aksi untuk melihat rekomendasi tindakan bagi guru.</p>
+                </div>
+                <div class="w-full sm:w-auto no-print">
+                    <input type="text" id="search-input" oninput="filterTable()" placeholder="Cari nama siswa..." class="w-full sm:w-64 px-3.5 py-2 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+            </div>
+
+            <!-- Table Wrapper -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                            <th class="py-3 px-4">Nama Siswa</th>
+                            <th class="py-3 px-3 text-center">Kehadiran</th>
+                            <th class="py-3 px-3 text-center">Tugas</th>
+                            <th class="py-3 px-3 text-center">UTS</th>
+                            <th class="py-3 px-3 text-center bg-indigo-50/50 text-indigo-700">Prediksi Nilai Akhir</th>
+                            <th class="py-3 px-4 text-center">Status Siswa</th>
+                            <th class="py-3 px-4 text-center no-print">Aksi Guru</th>
+                        </tr>
+                    </thead>
+                    <tbody id="student-table-body" class="divide-y divide-slate-100 text-sm">
+                        <!-- Rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                <span id="table-counter">Menampilkan 0 siswa</span>
+                <span class="italic">Prediksi dihitung dari: Kehadiran (20%), Tugas (30%), UTS (50%).</span>
+            </div>
+        </div>
+
+        <!-- Panel Tersembunyi: Indikator Akurasi Sistem di Balik Layar (MAE & RMSE) -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 no-print">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleTechPanel()">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-900">Indikator Akurasi Sistem (Informasi Teknis di Balik Layar)</h3>
+                        <p class="text-xs text-slate-500">Klik untuk melihat seberapa akurat prediksi sistem dibandingkan nilai ujian asli.</p>
+                    </div>
+                </div>
+                <button id="toggle-icon-btn" class="text-slate-400 hover:text-slate-600 text-sm font-medium">
+                    <i class="fa-solid fa-chevron-down transition-transform duration-200" id="chevron-icon"></i>
+                </button>
+            </div>
+
+            <!-- Collapsible Body -->
+            <div id="tech-panel-body" class="hidden mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-600 uppercase">MAE (Rata-rata Tingkat Meleset)</span>
+                        <span id="tech-mae" class="text-lg font-extrabold text-amber-600">0.00</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1">Menunjukkan rata-rata selisih mutlak antara tebakan prediksi sistem dengan nilai ujian yang sebenarnya di lapangan.</p>
+                </div>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-purple-600 uppercase">RMSE (Penalti Kesalahan Besar)</span>
+                        <span id="tech-rmse" class="text-lg font-extrabold text-purple-600">0.00</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1">Mengukur seberapa sensitif sistem terhadap kesalahan prediksi yang fatal atau meleset jauh.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Tambah / Edit Siswa -->
+    <div id="student-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="bg-indigo-600 text-white p-5 flex justify-between items-center">
+                <h3 id="modal-form-title" class="font-bold text-base flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Tambah Data Siswa
+                </h3>
+                <button onclick="closeStudentModal()" class="text-indigo-200 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="student-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-index" value="-1">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nama Lengkap Siswa</label>
+                    <input type="text" id="input-name" required placeholder="Contoh: Rian Pratama" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Kehadiran (%)</label>
+                        <input type="number" id="input-attendance" min="0" max="100" required placeholder="90" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nilai Tugas (0-100)</label>
+                        <input type="number" id="input-task" min="0" max="100" required placeholder="80" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nilai UTS (0-100)</label>
+                        <input type="number" id="input-uts" min="0" max="100" required placeholder="75" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nilai UAS Aktual <span class="font-normal text-slate-400">(Opsional)</span></label>
+                        <input type="number" id="input-actual" min="0" max="100" placeholder="Jika sudah ujian" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-sm outline-none">
+                    </div>
+                </div>
+                <div class="pt-3 flex justify-end gap-2">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-semibold rounded-xl">Batal</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Rekomendasi Aksi Guru -->
+    <div id="recommendation-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden">
+            <div class="bg-indigo-600 text-white p-5 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-700 p-2 rounded-lg">
+                        <i class="fa-solid fa-stethoscope text-xl text-indigo-200"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base" id="rec-student-name">Nama Siswa</h3>
+                        <p class="text-xs text-indigo-200" id="rec-student-status">Status: Butuh Remedial</p>
+                    </div>
+                </div>
+                <button onclick="closeRecModal()" class="text-indigo-200 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Hasil Analisis Prediksi</p>
+                    <p id="rec-student-desc" class="text-sm text-slate-700 mt-1">Deskripsi performa siswa...</p>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                        <i class="fa-solid fa-list-check text-indigo-600 mr-1.5"></i> Rekomendasi Tindakan untuk Guru:
+                    </h4>
+                    <ul id="rec-action-list" class="space-y-2 text-sm text-slate-700">
+                        <!-- Populated via JS -->
+                    </ul>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeRecModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-5 rounded-xl text-sm transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert / Toast Modal -->
+    <div id="alert-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+            <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-circle-check" id="alert-icon"></i>
+            </div>
+            <div>
+                <h3 id="alert-title" class="font-bold text-slate-900 text-lg">Berhasil</h3>
+                <p id="alert-message" class="text-sm text-slate-500 mt-1">Pesan...</p>
+            </div>
+            <button onclick="closeAlert()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition">
+                Mengerti
+            </button>
+        </div>
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // Nilai KKM Default
+        let KKM = 75;
+
+        // Data Awal Siswa
+        let students = [
+            { name: "Ahmad Fauzi", attendance: 92, task: 85, uts: 80, actual: 82 },
+            { name: "Siti Rahma", attendance: 68, task: 62, uts: 60, actual: 65 },
+            { name: "Dimas Anggara", attendance: 95, task: 90, uts: 88, actual: 90 },
+            { name: "Dewi Lestari", attendance: 78, task: 72, uts: 70, actual: 72 },
+            { name: "Rizky Pratama", attendance: 55, task: 58, uts: 52, actual: 54 },
+            { name: "Anisa Nurul", attendance: 90, task: 82, uts: 78, actual: 80 },
+            { name: "Bambang Pamungkas", attendance: 88, task: 75, uts: 70, actual: null },
+            { name: "Citra Kirana", attendance: 60, task: 64, uts: 62, actual: null }
+        ];
+
+        window.onload = function() {
+            renderTable();
+            updateDashboard();
+        };
+
+        // Update KKM dari input atas
+        function updateKKM(val) {
+            let num = parseInt(val);
+            if (!isNaN(num) && num >= 50 && num <= 100) {
+                KKM = num;
+                document.getElementById('print-kkm-label').innerText = KKM;
+                renderTable();
+                updateDashboard();
+                showToast("KKM Diperbarui", `KKM sekolah diatur ke angka ${KKM}`, "success");
+            }
+        }
+
+        // Hitung Prediksi Nilai Akhir
+        function calculatePrediction(att, task, uts) {
+            let pred = (att * 0.20) + (task * 0.30) + (uts * 0.50);
+            return Math.min(100, Math.max(0, Math.round(pred)));
+        }
+
+        // Tentukan Status Siswa Berdasarkan KKM
+        function getStudentStatus(prediction) {
+            if (prediction >= KKM) {
+                return { label: "Aman", class: "bg-emerald-50 text-emerald-700 border border-emerald-200" };
+            } else if (prediction >= (KKM - 8)) {
+                return { label: "Perlu Perhatian", class: "bg-amber-50 text-amber-700 border border-amber-200" };
+            } else {
+                return { label: "Butuh Remedial", class: "bg-rose-50 text-rose-700 border border-rose-200" };
+            }
+        }
+
+        // Render Tabel
+        function renderTable(filterQuery = "") {
+            const tbody = document.getElementById('student-table-body');
+            tbody.innerHTML = "";
+
+            let filtered = students.filter(s => s.name.toLowerCase().includes(filterQuery.toLowerCase()));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400 italic">Tidak ada siswa ditemukan.</td></tr>`;
+                document.getElementById('table-counter').innerText = `Menampilkan 0 dari ${students.length} siswa`;
+                return;
+            }
+
+            filtered.forEach((student, index) => {
+                let realIndex = students.indexOf(student);
+                let pred = calculatePrediction(student.attendance, student.task, student.uts);
+                let status = getStudentStatus(pred);
+
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-medium text-slate-900">${student.name}</td>
+                    <td class="py-3 px-3 text-center text-slate-600">${student.attendance}%</td>
+                    <td class="py-3 px-3 text-center text-slate-600">${student.task}</td>
+                    <td class="py-3 px-3 text-center text-slate-600">${student.uts}</td>
+                    <td class="py-3 px-3 text-center font-bold text-indigo-600 bg-indigo-50/20">${pred}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold ${status.class}">
+                            ${status.label}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center no-print">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="openRecModal(${realIndex})" title="Lihat Rekomendasi Guru" class="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition">
+                                <i class="fa-solid fa-stethoscope"></i>
+                            </button>
+                            <button onclick="editStudent(${realIndex})" title="Edit Data" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="deleteStudent(${realIndex})" title="Hapus Data" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('table-counter').innerText = `Menampilkan ${filtered.length} dari ${students.length} siswa`;
+        }
+
+        // Update Dashboard Cards & Technical Panel (MAE & RMSE)
+        function updateDashboard() {
+            let total = students.length;
+            let aman = 0;
+            let perhatian = 0;
+            let remedial = 0;
+
+            let absErrors = [];
+            let sqErrors = [];
+
+            students.forEach(s => {
+                let pred = calculatePrediction(s.attendance, s.task, s.uts);
+                let status = getStudentStatus(pred);
+
+                if (status.label === "Aman") aman++;
+                else if (status.label === "Perlu Perhatian") perhatian++;
+                else remedial++;
+
+                if (s.actual !== null && s.actual !== "" && !isNaN(s.actual)) {
+                    let err = pred - Number(s.actual);
+                    absErrors.push(Math.abs(err));
+                    sqErrors.push(Math.pow(err, 2));
+                }
+            });
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-aman').innerText = aman;
+            document.getElementById('stat-perhatian').innerText = perhatian;
+            document.getElementById('stat-remedial').innerText = remedial;
+
+            // Hitung MAE & RMSE di balik layar
+            let mae = 0;
+            let rmse = 0;
+            if (absErrors.length > 0) {
+                let sumAbs = absErrors.reduce((a, b) => a + b, 0);
+                mae = (sumAbs / absErrors.length).toFixed(2);
+
+                let sumSq = sqErrors.reduce((a, b) => a + b, 0);
+                rmse = Math.sqrt(sumSq / sqErrors.length).toFixed(2);
+            }
+
+            document.getElementById('tech-mae').innerText = mae;
+            document.getElementById('tech-rmse').innerText = rmse;
+        }
+
+        // Filter Table Search
+        function filterTable() {
+            let q = document.getElementById('search-input').value;
+            renderTable(q);
+        }
+
+        // Toggle Technical Panel
+        function toggleTechPanel() {
+            let panel = document.getElementById('tech-panel-body');
+            let chevron = document.getElementById('chevron-icon');
+            panel.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        // Modal Tambah Siswa
+        function openAddModal() {
+            document.getElementById('edit-index').value = -1;
+            document.getElementById('modal-form-title').innerHTML = `<i class="fa-solid fa-user-plus"></i> Tambah Data Siswa`;
+            document.getElementById('student-form').reset();
+            document.getElementById('student-modal').classList.remove('hidden');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('student-modal').classList.add('hidden');
+        }
+
+        function editStudent(index) {
+            let s = students[index];
+            document.getElementById('edit-index').value = index;
+            document.getElementById('modal-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Data Siswa`;
+            document.getElementById('input-name').value = s.name;
+            document.getElementById('input-attendance').value = s.attendance;
+            document.getElementById('input-task').value = s.task;
+            document.getElementById('input-uts').value = s.uts;
+            document.getElementById('input-actual').value = s.actual !== null ? s.actual : "";
+            document.getElementById('student-modal').classList.remove('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            let index = parseInt(document.getElementById('edit-index').value);
+            let name = document.getElementById('input-name').value;
+            let attendance = parseFloat(document.getElementById('input-attendance').value);
+            let task = parseFloat(document.getElementById('input-task').value);
+            let uts = parseFloat(document.getElementById('input-uts').value);
+            let actVal = document.getElementById('input-actual').value;
+            let actual = actVal === "" ? null : parseFloat(actVal);
+
+            let obj = { name, attendance, task, uts, actual };
+
+            if (index === -1) {
+                students.push(obj);
+                showToast("Berhasil", "Data siswa baru berhasil ditambahkan.", "success");
+            } else {
+                students[index] = obj;
+                showToast("Berhasil", "Data siswa berhasil diperbarui.", "success");
+            }
+
+            closeStudentModal();
+            renderTable();
+            updateDashboard();
+        }
+
+        function deleteStudent(index) {
+            students.splice(index, 1);
+            renderTable();
+            updateDashboard();
+            showToast("Terhapus", "Data siswa berhasil dihapus.", "success");
+        }
+
+        // Modal Rekomendasi Guru
+        function openRecModal(index) {
+            let s = students[index];
+            let pred = calculatePrediction(s.attendance, s.task, s.uts);
+            let status = getStudentStatus(pred);
+
+            document.getElementById('rec-student-name').innerText = s.name;
+            document.getElementById('rec-student-status').innerText = `Status: ${status.label} (Prediksi Nilai: ${pred})`;
+
+            let desc = `Siswa memiliki tingkat kehadiran ${s.attendance}%, nilai tugas ${s.task}, dan nilai UTS ${s.uts}. `;
+            if (status.label === "Butuh Remedial") {
+                desc += `Karena prediksi nilai (${pred}) berada di bawah KKM (${KKM}), siswa ini memerlukan intervensi dini.`;
+            } else if (status.label === "Perlu Perhatian") {
+                desc += `Nilai mendekati KKM (${KKM}). Perlu pengawasan agar nilainya tidak turun di bawah standar.`;
+            } else {
+                desc += `Performa belajar stabil dan di atas KKM (${KKM}).`;
+            }
+            document.getElementById('rec-student-desc').innerText = desc;
+
+            let actionList = document.getElementById('rec-action-list');
+            actionList.innerHTML = "";
+
+            let actions = [];
+            if (s.attendance < 75) {
+                actions.push(`<li class="flex items-start gap-2"><i class="fa-solid fa-check text-indigo-600 mt-1"></i> <span><b>Konseling Kehadiran:</b> Ajak bicara karena tingkat kehadiran di bawah 75%.</span></li>`);
+            }
+            if (s.task < KKM) {
+                actions.push(`<li class="flex items-start gap-2"><i class="fa-solid fa-check text-indigo-600 mt-1"></i> <span><b>Remedial Tugas Harian:</b> Berikan tugas perbaikan untuk mendongkrak komponen nilai tugas.</span></li>`);
+            }
+            if (s.uts < KKM) {
+                actions.push(`<li class="flex items-start gap-2"><i class="fa-solid fa-check text-indigo-600 mt-1"></i> <span><b>Bimbingan Belajar Tambahan:</b> Nilai UTS di bawah KKM menandakan perlunya pendampingan materi.</span></li>`);
+            }
+            if (actions.length === 0) {
+                actions.push(`<li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i> <span><b>Pertahankan & Pengayaan:</b> Berikan apresiasi atau bahan bacaan lanjutan agar siswa semakin termotivasi.</span></li>`);
+            }
+
+            actions.forEach(act => actionList.innerHTML += act);
+            document.getElementById('recommendation-modal').classList.remove('hidden');
+        }
+
+        function closeRecModal() {
+            document.getElementById('recommendation-modal').classList.add('hidden');
+        }
+
+        // Toast / Alert Notification
+        function showToast(title, message, type = "success") {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
+```
+eof
