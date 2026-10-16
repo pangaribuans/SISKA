@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Siska Guru - Pantau Nilai & Peringatan Dini Siswa</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+        /* Custom scrollbar for modals */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col pb-20 md:pb-6 selection:bg-indigo-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-700 p-2.5 rounded-2xl border border-indigo-400/30 shadow-inner">
+                    <i class="fa-solid fa-graduation-cap text-2xl text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight">Siska Guru</h1>
+                    <p class="text-[11px] text-indigo-200 hidden sm:block">Pantau & Prediksi Nilai Siswa Instan</p>
+                </div>
+            </div>
+            
+            <!-- Header Controls & Actions -->
+            <div class="flex items-center gap-2">
+                <!-- KKM Widget -->
+                <div class="bg-indigo-700/90 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 text-xs border border-indigo-400/30">
+                    <span class="text-indigo-200 font-medium hidden xs:inline">KKM:</span>
+                    <input type="number" id="kkm-input" value="75" min="50" max="100" onchange="updateKKM(this.value)" class="w-10 bg-indigo-900 text-white font-bold text-center rounded px-1 py-0.5 outline-none border border-indigo-400 focus:ring-1 focus:ring-amber-300 text-xs">
+                </div>
+
+                <button onclick="openAddModal()" class="bg-white text-indigo-700 hover:bg-indigo-50 font-bold px-3 py-2 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-user-plus text-xs"></i> <span class="hidden sm:inline">Tambah Siswa</span>
+                </button>
+
+                <div class="hidden md:flex items-center gap-1.5">
+                    <button onclick="exportToCSV()" class="bg-indigo-700 hover:bg-indigo-800 text-indigo-100 font-semibold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1 border border-indigo-400/30" title="Unduh CSV">
+                        <i class="fa-solid fa-file-excel"></i> CSV
+                    </button>
+                    <button onclick="window.print()" class="bg-indigo-700 hover:bg-indigo-800 text-indigo-100 font-semibold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1 border border-indigo-400/30" title="Cetak PDF">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main id="printable-area" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-grow w-full space-y-5">
+
+        <!-- Print Title Header (Only Visible on Print) -->
+        <div class="hidden print:block text-center border-b pb-4 mb-4">
+            <h2 class="text-2xl font-extrabold text-slate-900">LAPORAN PEMANTAUAN & PREDIKSI NILAI SISWA</h2>
+            <p class="text-sm text-slate-600 mt-1">Dicetak otomatis oleh Siska Guru | Standar KKM Sekolah: <span id="print-kkm-label" class="font-bold">75</span></p>
+        </div>
+
+        <!-- Direct Instant Action Banner -->
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-700 text-white p-4 rounded-2xl shadow-md flex items-center justify-between gap-3 no-print">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-hand-pointer text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs sm:text-sm font-extrabold tracking-wide">Sentuh Kartu di Bawah Ini!</h3>
+                    <p class="text-[11px] text-indigo-100">Daftar nama siswa langsung muncul di tengah layar tanpa perlu scroll ke bawah.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. INSTANT TOUCH CARDS (OPEN DIRECT POPUP MODAL) -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 no-print">
+            <!-- Card 1: Semua Siswa -->
+            <div onclick="openInstantPopup('Semua')" class="cursor-pointer bg-white p-4 rounded-2xl shadow-sm border-2 border-slate-200 hover:border-slate-400 transition-all active:scale-95 group relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Siswa</p>
+                        <h3 id="stat-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-0.5">0</h3>
+                        <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-list text-[9px]"></i> Lihat Semua Siswa
+                        </span>
+                    </div>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg sm:text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Siswa Aman -->
+            <div onclick="openInstantPopup('Aman')" class="cursor-pointer bg-white p-4 rounded-2xl shadow-sm border-2 border-emerald-100 hover:border-emerald-400 transition-all active:scale-95 group relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Siswa Aman</p>
+                        <h3 id="stat-aman" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-0.5">0</h3>
+                        <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-bolt text-[9px]"></i> Ketuk Nama-Namanya
+                        </span>
+                    </div>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg sm:text-xl">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Perlu Perhatian -->
+            <div onclick="openInstantPopup('Perlu Perhatian')" class="cursor-pointer bg-white p-4 rounded-2xl shadow-sm border-2 border-amber-200 hover:border-amber-400 transition-all active:scale-95 group relative overflow-hidden bg-amber-50/20">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Perlu Perhatian</p>
+                        <h3 id="stat-perhatian" class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-0.5">0</h3>
+                        <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-eye text-[9px]"></i> Ketuk Nama-Namanya
+                        </span>
+                    </div>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg sm:text-xl">
+                        <i class="fa-solid fa-user-gear"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Butuh Remedial -->
+            <div onclick="openInstantPopup('Butuh Remedial')" class="cursor-pointer bg-white p-4 rounded-2xl shadow-sm border-2 border-rose-200 hover:border-rose-400 transition-all active:scale-95 group relative overflow-hidden bg-rose-50/20">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-rose-600">Butuh Remedial</p>
+                        <h3 id="stat-remedial" class="text-2xl sm:text-3xl font-extrabold text-rose-600 mt-0.5">0</h3>
+                        <span class="inline-flex items-center gap-1 mt-2 text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
+                            <i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Ketuk Nama-Namanya
+                        </span>
+                    </div>
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg sm:text-xl">
+                        <i class="fa-solid fa-user-clock"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN TABLE / CARD LIST SECTION FOR COMPLETE CLASS RECORD -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 flex flex-col overflow-hidden">
+            <!-- Header Filter Controls -->
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-table-list text-indigo-600"></i> Rekap Seluruh Kelas
+                    </h2>
+                    <p id="list-subtitle" class="text-xs text-slate-500 mt-0.5">Semua data nilai dan prediksi siswa.</p>
+                </div>
+                
+                <!-- Search & Status Dropdown Filters -->
+                <div class="flex items-center gap-2 no-print">
+                    <select id="status-dropdown" onchange="filterInlineTable(this.value)" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                        <option value="Semua">Semua Status</option>
+                        <option value="Aman">Aman</option>
+                        <option value="Perlu Perhatian">Perlu Perhatian</option>
+                        <option value="Butuh Remedial">Butuh Remedial</option>
+                    </select>
+                    <div class="relative flex-grow sm:w-56">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="search-input" oninput="renderInlineTable()" placeholder="Cari nama..." class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responsive Render (Mobile Cards vs Desktop Table) -->
+            <div class="p-4 sm:p-5">
+                <!-- Mobile Card Container -->
+                <div id="inline-card-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:hidden"></div>
+
+                <!-- Desktop Table Container -->
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-3 px-4">Nama Siswa</th>
+                                <th class="py-3 px-3 text-center">Kehadiran</th>
+                                <th class="py-3 px-3 text-center">Tugas</th>
+                                <th class="py-3 px-3 text-center">UTS</th>
+                                <th class="py-3 px-3 text-center bg-indigo-50/70 text-indigo-700 font-extrabold">Prediksi UAS</th>
+                                <th class="py-3 px-4 text-center">Status</th>
+                                <th class="py-3 px-4 text-center no-print">Aksi & Solusi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inline-table-body" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                <span id="inline-counter" class="font-medium text-slate-600">Menampilkan 0 siswa</span>
+                <span class="italic text-[11px]">Formula: Hadir(20%) + Tugas(30%) + UTS(50%)</span>
+            </div>
+        </div>
+
+        <!-- ACCURACY PANEL (MAE & RMSE STATISTICAL METRICS) -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-5 no-print">
+            <div class="flex items-center justify-between cursor-pointer select-none" onclick="toggleTechPanel()">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-square-poll-vertical"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-xs sm:text-sm text-slate-900">Akurasi Prediksi Sistem (Statistika MAE & RMSE)</h3>
+                        <p class="text-[11px] text-slate-500">Ketuk untuk melihat tingkat ketepatan evaluasi sistem.</p>
+                    </div>
+                </div>
+                <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" id="chevron-icon"></i>
+                </div>
+            </div>
+
+            <div id="tech-panel-body" class="hidden mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div class="bg-amber-50/60 p-3.5 rounded-xl border border-amber-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-800 uppercase tracking-wider">MAE (Mean Absolute Error)</span>
+                        <span id="tech-mae" class="text-lg font-black text-amber-600">0.00</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 mt-1">Rata-rata selisih poin murni antara tebakan sistem dengan nilai UAS asli.</p>
+                </div>
+
+                <div class="bg-purple-50/60 p-3.5 rounded-xl border border-purple-100">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-purple-800 uppercase tracking-wider">RMSE (Root Mean Square Error)</span>
+                        <span id="tech-rmse" class="text-lg font-black text-purple-600">0.00</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 mt-1">Metrik evaluasi yang mendeteksi jika terjadi kesalahan deviasi prediksi yang besar.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- STICKY MOBILE BOTTOM NAVIGATION / QUICK POPOVERS -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-2 z-40 no-print flex justify-around items-center shadow-lg">
+        <button onclick="openInstantPopup('Semua')" class="flex flex-col items-center text-slate-600 hover:text-indigo-600 text-[10px] font-bold px-2 py-1 rounded-xl transition">
+            <i class="fa-solid fa-users text-base mb-0.5"></i>
+            <span>Semua</span>
+        </button>
+        <button onclick="openInstantPopup('Aman')" class="flex flex-col items-center text-emerald-700 hover:text-emerald-800 text-[10px] font-bold px-2 py-1 rounded-xl transition">
+            <i class="fa-solid fa-user-check text-base mb-0.5"></i>
+            <span>Aman</span>
+        </button>
+        <button onclick="openInstantPopup('Perlu Perhatian')" class="flex flex-col items-center text-amber-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-xl transition">
+            <i class="fa-solid fa-user-gear text-base mb-0.5"></i>
+            <span>Perhatian</span>
+        </button>
+        <button onclick="openInstantPopup('Butuh Remedial')" class="flex flex-col items-center text-rose-700 hover:text-rose-800 text-[10px] font-bold px-2 py-1 rounded-xl transition">
+            <i class="fa-solid fa-user-clock text-base mb-0.5"></i>
+            <span>Remedial</span>
+        </button>
+    </nav>
+
+    <!-- 2. INSTANT POPUP MODAL (FRONT AND CENTER - NO SCROLL NEEDED!) -->
+    <div id="instant-popup-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-4 no-print">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150">
+            
+            <!-- Popup Dynamic Header -->
+            <div id="popup-header-bg" class="p-4 sm:p-5 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div id="popup-icon-box" class="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-xl text-white">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                        <h3 id="popup-category-title" class="font-extrabold text-base sm:text-lg leading-tight">Daftar Nama Siswa</h3>
+                        <p id="popup-category-subtitle" class="text-xs text-white/80">Langsung tampil di depan layar</p>
+                    </div>
+                </div>
+                <button onclick="closeInstantPopup()" class="w-8 h-8 rounded-full bg-black/10 hover:bg-black/20 text-white flex items-center justify-center transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Instant Search Bar inside Popup -->
+            <div class="p-3 bg-slate-50 border-b border-slate-100 shrink-0">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="popup-search-input" oninput="renderPopupList()" placeholder="Cari nama siswa di daftar ini..." class="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+
+            <!-- Scrollable Student List inside Popup -->
+            <div id="popup-student-list" class="p-3 sm:p-4 overflow-y-auto custom-scrollbar space-y-2.5 flex-grow">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Popup Footer -->
+            <div class="p-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs shrink-0">
+                <span id="popup-count-badge" class="font-bold text-slate-600">Total: 0 Siswa</span>
+                <button onclick="closeInstantPopup()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: Detail Solusi & Catatan Guru -->
+    <div id="recommendation-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]">
+            <div id="rec-header-bg" class="bg-indigo-600 text-white p-4 sm:p-5 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center">
+                        <i id="rec-header-icon" class="fa-solid fa-stethoscope text-lg text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-extrabold text-sm sm:text-base" id="rec-student-name">Nama Siswa</h3>
+                        <p class="text-[11px] text-indigo-100" id="rec-student-status">Status: -</p>
+                    </div>
+                </div>
+                <button onclick="closeRecModal()" class="text-white/80 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-4 sm:p-5 space-y-4 overflow-y-auto custom-scrollbar">
+                <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl">
+                    <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Hasil Analisis Diagnostik</p>
+                    <p id="rec-student-desc" class="text-xs text-slate-700 mt-1 leading-relaxed">Deskripsi...</p>
+                </div>
+
+                <div>
+                    <h4 class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-clipboard-list text-indigo-600"></i> Rekomendasi Langkah Guru:
+                    </h4>
+                    <ul id="rec-action-list" class="space-y-2 text-xs text-slate-700">
+                        <!-- Dynamic items -->
+                    </ul>
+                </div>
+
+                <div class="border-t border-slate-100 pt-3">
+                    <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Khusus Guru:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="modal-note-input" placeholder="Tambah catatan (misal: Sudah dikontak ortu)..." class="flex-grow px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="saveModalNote()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition">
+                            Simpan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeRecModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-4 rounded-xl text-xs transition">
+                    Kembali
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: Tambah / Edit Siswa -->
+    <div id="student-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-xl max-w-md w-full overflow-hidden">
+            <div class="bg-indigo-600 text-white p-4 flex justify-between items-center">
+                <h3 id="modal-form-title" class="font-bold text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus"></i> Tambah Data Siswa
+                </h3>
+                <button onclick="closeStudentModal()" class="text-indigo-200 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="student-form" onsubmit="handleFormSubmit(event)" class="p-4 sm:p-5 space-y-3.5">
+                <input type="hidden" id="edit-index" value="-1">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Nama Lengkap Siswa</label>
+                    <input type="text" id="input-name" required placeholder="Contoh: Budi Santoso" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Kehadiran (%)</label>
+                        <input type="number" id="input-attendance" min="0" max="100" required placeholder="90" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Nilai Tugas (0-100)</label>
+                        <input type="number" id="input-task" min="0" max="100" required placeholder="80" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Nilai UTS (0-100)</label>
+                        <input type="number" id="input-uts" min="0" max="100" required placeholder="75" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">UAS Asli <span class="font-normal text-slate-400">(Opsional)</span></label>
+                        <input type="number" id="input-actual" min="0" max="100" placeholder="Hasil asli" class="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Catatan Khusus Guru</label>
+                    <textarea id="input-note" rows="2" placeholder="Contoh: Butuh perhatian di tugas kelompok..." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 text-xs outline-none"></textarea>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl">Batal</button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: Toast Alert -->
+    <div id="alert-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 text-center space-y-3">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto text-lg">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <h3 id="alert-title" class="font-bold text-slate-900 text-sm">Informasi</h3>
+                <p id="alert-message" class="text-xs text-slate-500 mt-0.5">Pesan...</p>
+            </div>
+            <button onclick="closeAlert()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl text-xs transition">
+                Mengerti
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let KKM = 75;
+        let activePopupCategory = 'Semua';
+        let activeInlineFilter = 'Semua';
+        let activeStudentIndexForNote = -1;
+
+        let students = [
+            { name: "Ahmad Fauzi", attendance: 92, task: 85, uts: 80, actual: 82, note: "Siswa aktif dan konsisten" },
+            { name: "Siti Rahma", attendance: 68, task: 62, uts: 60, actual: 65, note: "Sering izin sakit" },
+            { name: "Dimas Anggara", attendance: 95, task: 90, uts: 88, actual: 90, note: "Peringkat 1 kelas" },
+            { name: "Dewi Lestari", attendance: 78, task: 72, uts: 70, actual: 72, note: "Perlu bimbingan matematika" },
+            { name: "Rizky Pratama", attendance: 55, task: 58, uts: 52, actual: 54, note: "Orang tua sudah dihubungi" },
+            { name: "Anisa Nurul", attendance: 90, task: 82, uts: 78, actual: 80, note: "Rajin kumpul tugas" },
+            { name: "Bambang Pamungkas", attendance: 88, task: 75, uts: 70, actual: null, note: "" },
+            { name: "Citra Kirana", attendance: 60, task: 64, uts: 62, actual: null, note: "Perlu remedi Bab 3" }
+        ];
+
+        window.onload = function() {
+            renderInlineTable();
+            updateDashboardStats();
+        };
+
+        function updateKKM(val) {
+            let num = parseInt(val);
+            if (!isNaN(num) && num >= 50 && num <= 100) {
+                KKM = num;
+                document.getElementById('print-kkm-label').innerText = KKM;
+                renderInlineTable();
+                updateDashboardStats();
+                showToast("KKM Diperbarui", `KKM disesuaikan ke ${KKM}`);
+            }
+        }
+
+        function calculatePrediction(att, task, uts) {
+            let pred = (att * 0.20) + (task * 0.30) + (uts * 0.50);
+            return Math.min(100, Math.max(0, Math.round(pred)));
+        }
+
+        function getStudentStatus(prediction) {
+            if (prediction >= KKM) {
+                return { label: "Aman", badgeClass: "bg-emerald-100 text-emerald-800 font-bold", dotClass: "bg-emerald-500" };
+            } else if (prediction >= (KKM - 8)) {
+                return { label: "Perlu Perhatian", badgeClass: "bg-amber-100 text-amber-800 font-bold", dotClass: "bg-amber-500" };
+            } else {
+                return { label: "Butuh Remedial", badgeClass: "bg-rose-100 text-rose-800 font-bold", dotClass: "bg-rose-500" };
+            }
+        }
+
+        /* -------------------------------------------------------------
+           INSTANT POPUP MODAL (DIRECT FRONT & CENTER - NO SCROLL)
+        ------------------------------------------------------------- */
+        function openInstantPopup(category) {
+            activePopupCategory = category;
+            document.getElementById('popup-search-input').value = "";
+
+            let headerBg = document.getElementById('popup-header-bg');
+            let iconBox = document.getElementById('popup-icon-box');
+            let title = document.getElementById('popup-category-title');
+            let subtitle = document.getElementById('popup-category-subtitle');
+
+            if (category === 'Aman') {
+                headerBg.className = "p-4 sm:p-5 text-white bg-emerald-600 flex justify-between items-center shrink-0";
+                iconBox.innerHTML = `<i class="fa-solid fa-user-check"></i>`;
+                title.innerText = "Siswa Aman";
+                subtitle.innerText = `Siswa dengan prediksi UAS ≥ KKM (${KKM})`;
+            } else if (category === 'Perlu Perhatian') {
+                headerBg.className = "p-4 sm:p-5 text-white bg-amber-600 flex justify-between items-center shrink-0";
+                iconBox.innerHTML = `<i class="fa-solid fa-user-gear"></i>`;
+                title.innerText = "Perlu Perhatian";
+                subtitle.innerText = `Siswa mendekati batas KKM (${KKM})`;
+            } else if (category === 'Butuh Remedial') {
+                headerBg.className = "p-4 sm:p-5 text-white bg-rose-600 flex justify-between items-center shrink-0";
+                iconBox.innerHTML = `<i class="fa-solid fa-user-clock"></i>`;
+                title.innerText = "Butuh Remedial";
+                subtitle.innerText = `Siswa berisiko di bawah KKM (${KKM})`;
+            } else {
+                headerBg.className = "p-4 sm:p-5 text-white bg-indigo-600 flex justify-between items-center shrink-0";
+                iconBox.innerHTML = `<i class="fa-solid fa-users"></i>`;
+                title.innerText = "Semua Siswa";
+                subtitle.innerText = "Daftar seluruh siswa terdaftar";
+            }
+
+            renderPopupList();
+            document.getElementById('instant-popup-modal').classList.remove('hidden');
+        }
+
+        function closeInstantPopup() {
+            document.getElementById('instant-popup-modal').classList.add('hidden');
+        }
+
+        function renderPopupList() {
+            let container = document.getElementById('popup-student-list');
+            let searchQuery = document.getElementById('popup-search-input').value.toLowerCase();
+            container.innerHTML = "";
+
+            let count = 0;
+
+            students.forEach((s, index) => {
+                let pred = calculatePrediction(s.attendance, s.task, s.uts);
+                let status = getStudentStatus(pred);
+
+                let matchesCategory = (activePopupCategory === 'Semua') || (status.label === activePopupCategory);
+                let matchesSearch = s.name.toLowerCase().includes(searchQuery);
+
+                if (matchesCategory && matchesSearch) {
+                    count++;
+                    let item = document.createElement('div');
+                    item.className = "p-3.5 bg-slate-50 hover:bg-indigo-50/50 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-3 transition cursor-pointer";
+                    item.onclick = function() {
+                        openRecModal(index);
+                    };
+
+                    item.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-3 h-3 rounded-full ${status.dotClass} shrink-0"></div>
+                            <div class="truncate">
+                                <h4 class="font-extrabold text-slate-900 text-xs sm:text-sm truncate">${s.name}</h4>
+                                <p class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                    <span>Hadir: ${s.attendance}%</span> • 
+                                    <span>Tugas: ${s.task}</span> • 
+                                    <span>UTS: ${s.uts}</span>
+                                </p>
+                                ${s.note ? `<p class="text-[10px] text-amber-600 font-medium truncate mt-0.5"><i class="fa-regular fa-note-sticky"></i> ${s.note}</p>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 shrink-0">
+                            <div class="text-right">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase">Prediksi</p>
+                                <p class="text-sm font-black text-indigo-700">${pred}</p>
+                            </div>
+                            <button onclick="event.stopPropagation(); openRecModal(${index})" class="p-2 bg-white text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl border border-indigo-100 shadow-sm text-xs font-bold transition">
+                                <i class="fa-solid fa-stethoscope"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                }
+            });
+
+            if (count === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="fa-solid fa-user-slash text-2xl mb-1 block"></i>
+                        <p class="text-xs font-medium">Tidak ada siswa ditemukan di kategori ini.</p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('popup-count-badge').innerText = `Menampilkan ${count} Siswa`;
+        }
+
+        /* -------------------------------------------------------------
+           INLINE TABLE & DASHBOARD STATS
+        ------------------------------------------------------------- */
+        function filterInlineTable(val) {
+            activeInlineFilter = val;
+            renderInlineTable();
+        }
+
+        function renderInlineTable() {
+            let cardContainer = document.getElementById('inline-card-container');
+            let tbody = document.getElementById('inline-table-body');
+            let searchQuery = document.getElementById('search-input').value.toLowerCase();
+
+            cardContainer.innerHTML = "";
+            tbody.innerHTML = "";
+
+            let count = 0;
+
+            students.forEach((student, index) => {
+                let pred = calculatePrediction(student.attendance, student.task, student.uts);
+                let status = getStudentStatus(pred);
+
+                let matchesStatus = (activeInlineFilter === 'Semua') || (status.label === activeInlineFilter);
+                let matchesSearch = student.name.toLowerCase().includes(searchQuery);
+
+                if (matchesStatus && matchesSearch) {
+                    count++;
+
+                    // Mobile Card View
+                    let card = document.createElement('div');
+                    card.className = "bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-col justify-between gap-2.5";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-slate-900 text-xs">${student.name}</h4>
+                                ${student.note ? `<p class="text-[10px] text-amber-600 mt-0.5"><i class="fa-regular fa-note-sticky"></i> ${student.note}</p>` : ''}
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] ${status.badgeClass}">${status.label}</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-1 text-center text-[10px] bg-white p-2 rounded-xl border border-slate-100">
+                            <div><span class="text-slate-400 block">Hadir</span><b>${student.attendance}%</b></div>
+                            <div><span class="text-slate-400 block">Tugas</span><b>${student.task}</b></div>
+                            <div><span class="text-slate-400 block">UTS</span><b>${student.uts}</b></div>
+                            <div class="text-indigo-700"><b>Prediksi</b><b class="block text-xs">${pred}</b></div>
+                        </div>
+                        <div class="flex justify-end gap-1.5 pt-1">
+                            <button onclick="openRecModal(${index})" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-bold"><i class="fa-solid fa-stethoscope"></i> Solusi</button>
+                            <button onclick="editStudent(${index})" class="p-1 bg-slate-200 text-slate-700 rounded-lg text-[10px]"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteStudent(${index})" class="p-1 bg-rose-100 text-rose-700 rounded-lg text-[10px]"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                    cardContainer.appendChild(card);
+
+                    // Desktop Table View
+                    let tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                    tr.innerHTML = `
+                        <td class="py-3 px-4">
+                            <div class="font-bold text-slate-800 cursor-pointer hover:text-indigo-600" onclick="openRecModal(${index})">${student.name}</div>
+                            ${student.note ? `<div class="text-[11px] text-amber-600 flex items-center gap-1 mt-0.5"><i class="fa-regular fa-note-sticky"></i> ${student.note}</div>` : ''}
+                        </td>
+                        <td class="py-3 px-3 text-center text-slate-600">${student.attendance}%</td>
+                        <td class="py-3 px-3 text-center text-slate-600">${student.task}</td>
+                        <td class="py-3 px-3 text-center text-slate-600">${student.uts}</td>
+                        <td class="py-3 px-3 text-center font-black text-indigo-700 bg-indigo-50/50">${pred}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block px-2.5 py-1 rounded-full text-xs ${status.badgeClass}">${status.label}</span>
+                        </td>
+                        <td class="py-3 px-4 text-center no-print">
+                            <div class="flex items-center justify-center gap-1.5">
+                                <button onclick="openRecModal(${index})" title="Solusi Guru" class="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition">
+                                    <i class="fa-solid fa-stethoscope"></i>
+                                </button>
+                                <button onclick="editStudent(${index})" title="Edit" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteStudent(${index})" title="Hapus" class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            document.getElementById('inline-counter').innerText = `Menampilkan ${count} dari ${students.length} siswa`;
+        }
+
+        function updateDashboardStats() {
+            let total = students.length;
+            let aman = 0;
+            let perhatian = 0;
+            let remedial = 0;
+
+            let absErrors = [];
+            let sqErrors = [];
+
+            students.forEach(s => {
+                let pred = calculatePrediction(s.attendance, s.task, s.uts);
+                let status = getStudentStatus(pred);
+
+                if (status.label === "Aman") aman++;
+                else if (status.label === "Perlu Perhatian") perhatian++;
+                else remedial++;
+
+                if (s.actual !== null && s.actual !== "" && !isNaN(s.actual)) {
+                    let err = pred - Number(s.actual);
+                    absErrors.push(Math.abs(err));
+                    sqErrors.push(Math.pow(err, 2));
+                }
+            });
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-aman').innerText = aman;
+            document.getElementById('stat-perhatian').innerText = perhatian;
+            document.getElementById('stat-remedial').innerText = remedial;
+
+            let mae = "0.00";
+            let rmse = "0.00";
+            if (absErrors.length > 0) {
+                let sumAbs = absErrors.reduce((a, b) => a + b, 0);
+                mae = (sumAbs / absErrors.length).toFixed(2);
+                let sumSq = sqErrors.reduce((a, b) => a + b, 0);
+                rmse = Math.sqrt(sumSq / sqErrors.length).toFixed(2);
+            }
+
+            document.getElementById('tech-mae').innerText = mae;
+            document.getElementById('tech-rmse').innerText = rmse;
+        }
+
+        function toggleTechPanel() {
+            let panel = document.getElementById('tech-panel-body');
+            let chevron = document.getElementById('chevron-icon');
+            panel.classList.toggle('hidden');
+            chevron.classList.toggle('rotate-180');
+        }
+
+        function openAddModal() {
+            document.getElementById('edit-index').value = -1;
+            document.getElementById('modal-form-title').innerHTML = `<i class="fa-solid fa-user-plus"></i> Tambah Data Siswa`;
+            document.getElementById('student-form').reset();
+            document.getElementById('student-modal').classList.remove('hidden');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('student-modal').classList.add('hidden');
+        }
+
+        function editStudent(index) {
+            let s = students[index];
+            document.getElementById('edit-index').value = index;
+            document.getElementById('modal-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Edit Data Siswa`;
+            document.getElementById('input-name').value = s.name;
+            document.getElementById('input-attendance').value = s.attendance;
+            document.getElementById('input-task').value = s.task;
+            document.getElementById('input-uts').value = s.uts;
+            document.getElementById('input-actual').value = s.actual !== null ? s.actual : "";
+            document.getElementById('input-note').value = s.note || "";
+            document.getElementById('student-modal').classList.remove('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            let index = parseInt(document.getElementById('edit-index').value);
+            let name = document.getElementById('input-name').value;
+            let attendance = parseFloat(document.getElementById('input-attendance').value);
+            let task = parseFloat(document.getElementById('input-task').value);
+            let uts = parseFloat(document.getElementById('input-uts').value);
+            let actVal = document.getElementById('input-actual').value;
+            let actual = actVal === "" ? null : parseFloat(actVal);
+            let note = document.getElementById('input-note').value;
+
+            let obj = { name, attendance, task, uts, actual, note };
+
+            if (index === -1) {
+                students.push(obj);
+                showToast("Siswa Ditambahkan", `${name} berhasil didaftarkan.`);
+            } else {
+                students[index] = obj;
+                showToast("Data Diperbarui", `Perubahan data ${name} berhasil disimpan.`);
+            }
+
+            closeStudentModal();
+            renderInlineTable();
+            updateDashboardStats();
+            if (!document.getElementById('instant-popup-modal').classList.contains('hidden')) {
+                renderPopupList();
+            }
+        }
+
+        function deleteStudent(index) {
+            let name = students[index].name;
+            students.splice(index, 1);
+            renderInlineTable();
+            updateDashboardStats();
+            if (!document.getElementById('instant-popup-modal').classList.contains('hidden')) {
+                renderPopupList();
+            }
+            showToast("Terhapus", `Data siswa ${name} dihapus.`);
+        }
+
+        function openRecModal(index) {
+            activeStudentIndexForNote = index;
+            let s = students[index];
+            let pred = calculatePrediction(s.attendance, s.task, s.uts);
+            let status = getStudentStatus(pred);
+
+            document.getElementById('rec-student-name').innerText = s.name;
+            document.getElementById('rec-student-status').innerText = `Status: ${status.label} (Prediksi UAS: ${pred})`;
+            document.getElementById('modal-note-input').value = s.note || "";
+
+            let headerBg = document.getElementById('rec-header-bg');
+            if (status.label === "Aman") headerBg.className = "bg-emerald-600 text-white p-4 sm:p-5 flex justify-between items-center";
+            else if (status.label === "Perlu Perhatian") headerBg.className = "bg-amber-600 text-white p-4 sm:p-5 flex justify-between items-center";
+            else headerBg.className = "bg-rose-600 text-white p-4 sm:p-5 flex justify-between items-center";
+
+            let desc = `Siswa ini memiliki kehadiran ${s.attendance}%, tugas ${s.task}, dan nilai UTS ${s.uts}. `;
+            if (status.label === "Butuh Remedial") desc += `Prediksi nilai (${pred}) berada di bawah KKM (${KKM}). Segera berikan pengayaan atau remidi.`;
+            else if (status.label === "Perlu Perhatian") desc += `Prediksi nilai (${pred}) mendekati KKM (${KKM}). Awasi kedisiplinan tugasnya.`;
+            else desc += `Performa sangat baik dan dipastikan tuntas KKM.`;
+            document.getElementById('rec-student-desc').innerText = desc;
+
+            let actionList = document.getElementById('rec-action-list');
+            actionList.innerHTML = "";
+            let actions = [];
+            if (s.attendance < 75) actions.push(`<li><b>Bimbingan Kehadiran:</b> Tingkatkan kedisiplinan absensi.</li>`);
+            if (s.task < KKM) actions.push(`<li><b>Remedial Tugas:</b> Latihan tambahan tugas harian.</li>`);
+            if (s.uts < KKM) actions.push(`<li><b>Pendampingan Belajar:</b> Tutor sebaya atau bimbingan khusus.</li>`);
+            if (actions.length === 0) actions.push(`<li><b>Pengayaan:</b> Berikan soal tantangan tingkat lanjut.</li>`);
+
+            actions.forEach(act => actionList.innerHTML += `<li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-indigo-600 mt-0.5"></i> <span>${act}</span></li>`);
+            document.getElementById('recommendation-modal').classList.remove('hidden');
+        }
+
+        function saveModalNote() {
+            if (activeStudentIndexForNote !== -1) {
+                let noteVal = document.getElementById('modal-note-input').value;
+                students[activeStudentIndexForNote].note = noteVal;
+                renderInlineTable();
+                if (!document.getElementById('instant-popup-modal').classList.contains('hidden')) {
+                    renderPopupList();
+                }
+                showToast("Catatan Disimpan", "Catatan khusus guru berhasil diperbarui.");
+                closeRecModal();
+            }
+        }
+
+        function closeRecModal() {
+            document.getElementById('recommendation-modal').classList.add('hidden');
+        }
+
+        function showToast(title, message) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Nama Siswa,Kehadiran (%),Nilai Tugas,Nilai UTS,Prediksi UAS,Status,Catatan Guru\n";
+            students.forEach(s => {
+                let pred = calculatePrediction(s.attendance, s.task, s.uts);
+                let status = getStudentStatus(pred).label;
+                let cleanNote = (s.note || "").replace(/,/g, " ");
+                csvContent += `"${s.name}",${s.attendance},${s.task},${s.uts},${pred},"${status}","${cleanNote}"\n`;
+            });
+            let encodedUri = encodeURI(csvContent);
+            link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `SiskaGuru_KKM${KKM}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
